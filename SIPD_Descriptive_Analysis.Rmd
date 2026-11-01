@@ -1,0 +1,77 @@
+---
+title: "Descriptive Data Analysis of Steel Industry Energy Consumption"
+author: "Yuze Wang"
+output:
+  pdf_document:
+    fig_caption: true
+geometry: margin=0.8in
+fontsize: 10pt
+---
+
+## Reading in Data
+```{r}
+library(tidyverse)
+steel.industry <- read.csv("Resampled_SIPD.csv")
+
+head(steel.industry)
+```
+
+## Testing-training split
+
+```{r}
+# Getting rid of bad columns
+drop <- c("X", "index", "date", "Day_of_week")
+steel.industry <- steel.industry[, !(names(steel.industry) %in% drop)]
+
+# Indicator variables
+steel.industry$Load_Type <- factor(
+  steel.industry$Load_Type,
+  levels = c("Light_Load", "Medium_Load", "Maximum_Load")
+  )
+steel.industry$WeekStatus <- factor(steel.industry$WeekStatus)
+
+# Training-testing split
+set.seed(42)
+train_ind <- sample(
+  seq_len(nrow(steel.industry)),
+  size = floor(0.80 * nrow(steel.industry))
+  )
+
+trainData <- steel.industry[train_ind, ]
+testData <- steel.industry[-train_ind, ]
+```
+
+## Summaries of numeric variables
+
+```{r}
+num.true.vect <- sapply(trainData, is.numeric)
+num <- trainData[num.true.vect]
+summary(num)
+```
+
+## Summaries of categorical variables
+
+```{r}
+categoric <- lapply(trainData[!num.true.vect], factor)
+lapply(categoric[names(categoric) != "date"], table)
+```
+
+## Multivariate relationships
+```{r}
+pairs(num)
+
+library(car)
+# Building a full model with numeric predictors
+full.mod <- lm(Usage_kWh ~ ., data = steel.industry)
+
+vif(full.mod)
+```
+
+```{r}
+response <- steel.industry$Usage_kWh
+par(mfrow = c(1, 2))
+boxplot(Usage_kWh ~ Load_Type,  data = steel.industry, ylab = "Usage (kWh)",
+        main = "(a) By load type", xlab = "")
+boxplot(Usage_kWh ~ WeekStatus, data = steel.industry, ylab = "Usage (kWh)",
+        main = "(b) By week status", xlab = "")
+```
