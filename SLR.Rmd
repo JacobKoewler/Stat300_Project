@@ -1,116 +1,172 @@
 ---
 title: "Simple Linear Regression Analysis"
-author: "Liam Bengston"
-date: "2026-11-09"
-output: pdf_document
+author: "Liam Bengston, Yuze Wang, Jacob Koewler"
+output:
+  pdf_document:
+    fig_caption: true
+header-includes:
+  - \usepackage{titling}
+  - \pretitle{\begin{center}\fontsize{15}{15}\bfseries}
+  - \posttitle{\end{center}\vspace{-1em}}
+  - \preauthor{\begin{center}\small}
+  - \postauthor{\end{center}\vspace{-1em}}
+  - \predate{\begin{center}\small}
+  - \postdate{\end{center}\vspace{-1.5em}}
+geometry: margin = 1in
+fontsize: 12pt
+linestretch: 1.15
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Setting up for the Code
-
-```{r}
-
-library(ggplot2)
+```{r, getting the data ready, echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyverse)
+library(kableExtra)
+library(patchwork)
 
 steel.industry <- read.csv("https://raw.githubusercontent.com/JacobKoewler/Stat300_Project/refs/heads/main/Resampled_SIPD.csv")
-
-```
-
-## Splitting Data
-
-```{r}
 
 set.seed(42)
 train_ind <- sample(1:nrow(steel.industry), size = 0.8 * nrow(steel.industry), replace = FALSE)
 
 train_set <- steel.industry[train_ind,]
 test_set <- steel.industry[-train_ind,]
-
 ```
 
-## Linear models 
+### Choosing the correct numeric variable for SLR
 
-This is the model we think works best: 
-
-### Model 1
+To select a singular variable, we conducted simple linear regression (SLR), we looked at the individual $R^2$ if we conducted SLR with each numeric variable in the dataset.
 
 ```{r}
-
+# All models
 model1 <- lm(Usage_kWh ~ CO2.tCO2., data = train_set)
-summary(model1)
-
-```
-
-### Model Interpretation
-
-Fitted Model Equation:
-
-
-
-How SLR model was built (how the variables was chosen, assumptions, etc):
-
-
-
-
-
-
-### Model 2
-
-```{r}
-
 model2 <- lm(Usage_kWh ~ Leading_Current_Reactive_Power_kVarh, data = train_set)
-summary(model2)
-
-```
-
-### Model 2 Interpretation
-
-
-
-### Model 3
-
-```{r}
-
 model3 <- lm(Usage_kWh ~ Lagging_Current_Reactive.Power_kVarh, data = train_set)
-summary(model3)
-
-```
-
-### Model 3 Interpretation
-
-### Model 4
-
-```{r}
-
 model4 <- lm(Usage_kWh ~ Lagging_Current_Power_Factor, data = train_set)
-summary(model4)
-
-```
-
-### Model 4 Interpretation
-
-### Model 5
-
-```{r}
-
 model5 <- lm(Usage_kWh ~ Leading_Current_Power_Factor, data = train_set)
-summary(model5)
+model6 <- lm(Usage_kWh ~ NSM, data = train_set)
 
+# df of R^2 values
+det.coe <- function(model) {return(summary(model)$r.squared)}
+get.var.name <- function(model) {return(as.character(formula(model)[[3]]))}
+models <- list(model1, model2, model3, model4, model5, model6)
+R.Squareds <- data.frame(
+  sapply(models, get.var.name),
+  sapply(models, det.coe)
+  )
+names(R.Squareds) <- c("Predictor variables", "R squared values")
+R.Squareds$`R squared values` <- round(R.Squareds$`R squared values`, 4)
+R.Squareds <- R.Squareds[order(R.Squareds$`R squared values`, decreasing = TRUE),]
+
+kable(
+  R.Squareds[1:3, ], 
+  caption = "Top 3 R squared values for numeric predicators in SLR",
+  row.names = FALSE,
+  booktabs = TRUE
+  ) |>
+  kable_styling(latex_options = "hold_position", font_size = 9)
 ```
 
-### Model 5 Interpretation
+From table 1, we see that `CO2.tCO2.` (parts per million emissions of the steel plant), has the highest $R^2$. However, to better study one of our research questions - how do the electrical properties of the plant affect its total power usage - we dropped `CO2.tCO2` and considered the next best variable for SLR (`Lagging_Current_Reactive.Power_kVarh`) with $R^2 = 0.8039$.
 
-### Model 6
+### Assess model assumptions
+```{r, res.figs}
+res.figs <- function(modObj, tag_lvl, cap) {
+
+# to obtain diagnostic values
+std.res <- rstandard(modObj)
+fit.vals <- fitted(modObj)
+df <- data.frame(std.res, fit.vals)
+
+#residual plot
+fig.1 <- ggplot(data = df, mapping = aes(x = fit.vals, y = std.res)) +
+  geom_point(size = 0.5, alpha = 0.8, fill = "black") +
+  geom_hline(yintercept = c(-3, 3), linetype = "dashed", color = "blue") +
+  theme_classic() +
+  labs(x = "Fitted values", y = "Standard residuals")
+  
+#qq plot of standardized residuals
+fig.2 <- ggplot(data = df, mapping = aes(sample = std.res)) +
+  stat_qq() + stat_qq_line(color = "blue") +
+  labs(x = "Theoretical quantile", y = "Sample quantile")
+  theme_classic()
+
+  (fig.1 | fig.2) +
+    plot_annotation(
+      tag_level = tag_lvl,
+      tag_prefix = "(",
+      tag_suffix = ")",
+      caption = cap
+    )
+}
+```
+
+```{r, fig.width = 6, fig.height = 2, fontsize = 10}
+res.figs(
+  model3,
+  list(c("1", "2")),
+  cap = "(1) Standard residuals plot and (2) normal QQ plot for y ~ x"
+  )
+```
+
+Model assumptions for $y \sim x$:
+
+The residual plot (1) shows a clear downward trend, suggesting a violation of the linearity assumption, warranting a transformation, (1) also shows no obvious change in spread, so the equal variance assumption appears satisfied. Independence cannot be assessed without further information about the factory processes/data collection. The QQ plot (2) shows substantially heavier tails than a normal distribution, violating normality. 
+
+```{r, fig.width = 6, fig.height = 2, fontsize = 10}
+train_set$sqrt.LCRP <- sqrt(train_set$Lagging_Current_Reactive.Power_kVarh)
+trans.mod <- lm(Usage_kWh ~ sqrt.LCRP, data = train_set)
+
+res.figs(
+  trans.mod,
+  list(c("3", "4")),
+  cap = "(1) Standard residuals plot and (2) normal QQ plot for y ~ sqrt(x)"
+  )
+```
+
+Model assumptions for $y \sim \sqrt{x}$:
+
+The residual plot (3) shows no obvious pattern, satisfying the linearity assumption. Same statement  as the previous model applies to the independence assumption. The QQ plot (4) still shows a heavier left tail, but the improvement suggests that normality is reasonably satisfied. The residual spread in (3) may increase slightly with fitted values, although there is no clear violation, we should proceed with caution.
+
+### Model outputs and predictive performance on the test set
+
+Below are model summaries for the finalized SLR model:
 
 ```{r}
-
-model6 <- lm(Usage_kWh ~ NSM, data = train_set)
-summary(model6)
-
+coef(summary(trans.mod))
 ```
 
-### Model 6 Interpretation
+We declare $y$ as the total power usage (kWh) and $x$ as the lagging current reactive power (kVARh). Let the true population model be, with constants $\beta_0, \beta_1$ and iid $\epsilon \sim N(0, \sigma^2)$:
+$$y = \beta_0 + \beta_1\sqrt{x} + \epsilon$$
+From the summary output, the regression equation is $\hat{y} = -8.593 + 12.588\sqrt{x}$
+
+When the square root of the lagging current reactive power is $0$, the estimated power usage is $-8.593$ kWh. With each unit increase in the square root of the lagging current reactive power, the estimated power usage increases by $12.588$ kWh.
+
+```{r}
+# Calculating MSE for the testing set
+test_set$sqrt.LCRP <- sqrt(test_set$Lagging_Current_Reactive.Power_kVarh)
+actual <- test_set$Usage_kWh
+pred <- predict(trans.mod, newdata = test_set)
+MSE <- sum((actual - pred) ^ 2) / (nrow(test_set) - 2)
+```
+
+The testing set has MSE = 292.152, where MSE is calculated by dividing SSE by $n - 2$ where $n$ is the total number of cases in the testing set. This value stays consistent with the training set (MSE = 300). 
+
+### List of references, contribution and AI statements
+### References
+
+Data can be accessed from https://archive.ics.uci.edu/dataset/851/steel+industry+energy+consumption
+
+### Contributions
+
+Liam Bengston: Model constructions and selection of relevant models
+
+Jacob Koewler: Model constructions and selection of relevant models
+
+Yuze Wang: Model assumptions and visualizations
+
+### AI
+
+Chatgpt was used to help with formatting the latex generating this pdf.
