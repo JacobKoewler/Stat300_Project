@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Setting up for the Code
 
-```{r cars}
+```{r}
 
 library(ggplot2)
 library(tidyverse)
@@ -22,7 +22,7 @@ steel.industry <- read.csv("https://raw.githubusercontent.com/JacobKoewler/Stat3
 
 ## Splitting Data
 
-```{r pressure, echo=FALSE}
+```{r}
 
 set.seed(42)
 train_ind <- sample(1:nrow(steel.industry), size = 0.8 * nrow(steel.industry), replace = FALSE)
