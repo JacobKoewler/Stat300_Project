@@ -1,0 +1,156 @@
+---
+title: "Simple Linear Regression Analysis"
+author: "Liam Bengston"
+date: "2026-11-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setting up for the Code
+
+```{r cars}
+
+library(ggplot2)
+library(tidyverse)
+
+steel.industry <- read.csv("https://raw.githubusercontent.com/JacobKoewler/Stat300_Project/refs/heads/main/Resampled_SIPD.csv")
+
+```
+
+## Splitting Data
+
+```{r pressure, echo=FALSE}
+
+set.seed(42)
+train_ind <- sample(1:nrow(steel.industry), size = 0.8 * nrow(steel.industry), replace = FALSE)
+
+train_set <- steel.industry[train_ind,]
+test_set <- steel.industry[-train_ind,]
+
+```
+
+## Plots
+
+```{r}
+
+ggplot(train_set, mapping = aes(x = Lagging_Current_Power_Factor, y = Usage_kWh)) +
+  geom_point(size = 0.5, alpha = 0.8, fill = "black") +
+  theme_classic() +
+  labs(
+    title = "Lagging Power factor vs Total Usage",
+    x = "Lagging Power Factor",
+    y = "Usage (kWh)"
+  )
+
+## In this plot, we see a non-linear relationship between the Lagging Power factor and the total energy usage. We can see that total usage remains low until a lagging power factor of 70.
+
+
+ggplot(train_set, mapping = aes(x = Leading_Current_Power_Factor, y = Usage_kWh)) +
+  geom_point(size = 0.5, alpha = 0.8, fill = "black") +
+  theme_classic() +
+  labs(
+    title = "Leading Power Factor vs Total Usage",
+    x = "Leading Power Factor",
+    y = "Total Usage (kWh)"
+    )
+
+# In this plot, we see a non-linear relationship between the leading power factor and the total usage. There is a weak positive association between these two variables. .
+
+ggplot(train_set, mapping = aes(x = NSM, y = Usage_kWh)) +
+  geom_point(size = 0.5, alpha = 0.8, fill = "black") +
+  geom_smooth(method = "lm") +
+  theme_classic() +
+  labs(
+    title = "NSM vs total usage",
+    x = "Number of Seconds from midnight",
+    y = "Total Usage (kWh)"
+  )
+
+# In this plot, we can see the relationship of the number of seconds from Midnight and total usage. There is a weak positiveassociation between the two variables.
+
+ggplot(train_set, mapping = aes(x = CO2.tCO2., y = Usage_kWh)) +
+  geom_point(size = 0.5, alpha = 0.8, fill = "black") +
+  geom_smooth(method = "lm") +
+  theme_classic() +
+  labs(
+    title = "CO2 Emissions vs Total Usage",
+    x = "CO2 Emissions (parts per million)",
+    y = "Usage (kWh)"
+  )
+
+# In this plot, we can see there is a strong positive linear association between CO2 emissions and total Usage.
+
+```
+
+## Linear models 
+
+### Model 1
+
+```{r}
+
+model1 <- lm(Usage_kWh ~ Lagging_Current_Reactive.Power_kVarh, data = train_set)
+summary(model1)
+
+```
+
+### Model 1 Interpretation
+
+  - 
+
+### Model 2
+
+```{r}
+
+model2 <- lm(Usage_kWh ~ Leading_Current_Reactive_Power_kVarh, data = train_set)
+summary(model2)
+
+```
+
+### Model 2 Interpretation
+
+### Model 3
+
+```{r}
+
+model3 <- lm(Usage_kWh ~ CO2.tCO2., data = train_set)
+summary(model3)
+
+```
+
+### Model 3 Interpretation
+
+### Model 4
+
+```{r}
+
+model4 <- lm(Usage_kWh ~ Lagging_Current_Power_Factor, data = train_set)
+summary(model4)
+
+```
+
+### Model 4 Interpretation
+
+### Model 5
+
+```{r}
+
+model5 <- lm(Usage_kWh ~ Leading_Current_Power_Factor, data = train_set)
+summary(model5)
+
+```
+
+### Model 5 Interpretation
+
+### Model 6
+
+```{r}
+
+model6 <- lm(Usage_kWh ~ NSM, data = train_set)
+summary(model6)
+
+```
+
+### Model 6 Interpretation
